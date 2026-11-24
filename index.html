@@ -2,8 +2,8 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArchStudio 3D — Simultaneous 2D Floor Planner & Live 3D House Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ArchStudio 3D — Mobile & Desktop 2D Floor Planner & Live 3D House Preview</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
@@ -17,12 +17,17 @@
         body {
             font-family: 'Inter', sans-serif;
             user-select: none;
+            -webkit-user-select: none;
             overflow: hidden;
+        }
+        /* Prevent page pull-to-refresh or scroll while drawing/orbiting on touch devices */
+        #canvas2d, #canvas3d-container canvas {
+            touch-action: none;
         }
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
         }
         ::-webkit-scrollbar-track {
             background: #0f172a;
@@ -46,46 +51,51 @@
             background: #3b82f6;
             color: white;
         }
+        .mob-bottom-tab.active {
+            color: #60a5fa;
+            background: rgba(37, 99, 235, 0.14);
+            border-top-color: #3b82f6;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 h-[100dvh] w-screen flex flex-col overflow-hidden">
 
     <!-- TOP NAVIGATION & FLOOR CONTROLLER BAR -->
-    <header class="h-14 bg-slate-900/95 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-20">
+    <header class="bg-slate-900/95 border-b border-slate-800 px-2.5 sm:px-4 h-12 sm:h-14 flex items-center justify-between gap-2 shrink-0 z-30">
         <!-- Brand -->
-        <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
-                <i data-lucide="layers" class="w-5 h-5"></i>
+        <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
+                <i data-lucide="layers" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </div>
             <div>
-                <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-                    ArchStudio 2D/3D
-                    <span class="text-[10px] font-semibold uppercase px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full">Live Sync</span>
+                <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                    ArchStudio
+                    <span class="text-[9px] sm:text-[10px] font-semibold uppercase px-1.5 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full">2D/3D</span>
                 </h1>
-                <p class="text-[11px] text-slate-400 hidden sm:block">Multi-Floor 2D Blueprint Editor & Simultaneous 3D Building Preview</p>
+                <p class="text-[11px] text-slate-400 hidden xl:block">Multi-Floor 2D Blueprint Editor & Simultaneous 3D Building Preview</p>
             </div>
         </div>
 
-        <!-- Floor Switcher Tabs -->
-        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 space-x-1">
-            <button onclick="selectFloor(0)" id="floor-tab-0" class="floor-tab active px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-transparent">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                Ground Floor (F1)
+        <!-- Compact Floor Switcher Tabs (Always single-row, never wraps) -->
+        <div class="flex items-center bg-slate-950 p-0.5 sm:p-1 rounded-xl border border-slate-800 space-x-0.5 sm:space-x-1">
+            <button onclick="selectFloor(0)" id="floor-tab-0" class="floor-tab active px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 sm:gap-1.5 border border-transparent">
+                <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400"></span>
+                <span>F1</span><span class="hidden md:inline">Ground</span>
             </button>
-            <button onclick="selectFloor(1)" id="floor-tab-1" class="floor-tab px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent">
-                <span class="w-2 h-2 rounded-full bg-sky-400"></span>
-                1st Floor (F2)
+            <button onclick="selectFloor(1)" id="floor-tab-1" class="floor-tab px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1 sm:gap-1.5 border border-transparent">
+                <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-sky-400"></span>
+                <span>F2</span><span class="hidden md:inline">1st Floor</span>
             </button>
-            <button onclick="selectFloor(2)" id="floor-tab-2" class="floor-tab px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent">
-                <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                2nd Floor (F3)
+            <button onclick="selectFloor(2)" id="floor-tab-2" class="floor-tab px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1 sm:gap-1.5 border border-transparent">
+                <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-purple-400"></span>
+                <span>F3</span><span class="hidden md:inline">2nd Floor</span>
             </button>
         </div>
 
         <!-- Preset & Utility Actions -->
-        <div class="flex items-center space-x-2">
-            <!-- Plot Frontage (W) x Depth (D) Controls -->
-            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs gap-1.5">
+        <div class="flex items-center space-x-1 sm:space-x-2 shrink-0">
+            <!-- Plot Frontage (W) x Depth (D) Controls (Desktop inline, mobile in Settings Tab) -->
+            <div class="hidden lg:flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs gap-1.5">
                 <span class="text-slate-400 hidden xl:inline">Plot (W×D):</span>
                 <input id="plot-w-input" type="number" min="10" max="120" value="30" class="w-11 bg-slate-900 text-white text-center font-semibold rounded border border-slate-700 px-1 py-0.5 focus:outline-none focus:border-blue-500" title="Plot Frontage / Width (Blocks)">
                 <span class="text-slate-500">×</span>
@@ -94,78 +104,80 @@
             </div>
 
             <!-- Unit Switcher Dropdown -->
-            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs">
-                <i data-lucide="ruler" class="w-3.5 h-3.5 text-blue-400 mr-1.5"></i>
-                <span class="text-slate-400 mr-1.5 hidden md:inline">Unit:</span>
+            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-1.5 sm:px-2 py-1 text-[11px] sm:text-xs">
+                <i data-lucide="ruler" class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-400 mr-1"></i>
                 <select id="unit-selector" onchange="changeUnit(this.value)" class="bg-slate-950 text-slate-100 font-semibold focus:outline-none cursor-pointer">
-                    <option value="ft" selected>Feet (ft)</option>
-                    <option value="m">Meters (m)</option>
-                    <option value="in">Inches (in)</option>
+                    <option value="ft" selected>ft</option>
+                    <option value="m">m</option>
+                    <option value="in">in</option>
                 </select>
             </div>
 
-            <button onclick="copyLowerFloor()" title="Copy rooms, regions & walls from the floor below" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+            <button onclick="copyLowerFloor()" title="Copy rooms, regions & walls from the floor below" class="hidden sm:flex p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium items-center gap-1.5 transition">
                 <i data-lucide="copy" class="w-3.5 h-3.5 text-sky-400"></i>
                 <span class="hidden md:inline">Copy Below</span>
             </button>
-            <button onclick="loadPresetVilla()" class="px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+            <button onclick="loadPresetVilla()" title="Load Demo Villa" class="p-1.5 sm:px-2.5 sm:py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
                 <i data-lucide="home" class="w-3.5 h-3.5"></i>
                 <span class="hidden md:inline">Demo Villa</span>
             </button>
-            <button onclick="clearCurrentFloor()" class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+            <button onclick="clearCurrentFloor()" title="Clear Current Floor" class="p-1.5 sm:px-2.5 sm:py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                <span class="hidden md:inline">Clear Floor</span>
+                <span class="hidden md:inline">Clear</span>
             </button>
         </div>
     </header>
 
-    <!-- MAIN WORKSPACE: LEFT TOOLS + 2D PLANNER + 3D LIVE PREVIEW -->
-    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    <!-- MAIN WORKSPACE: DEDICATED FULL-SCREEN TABS ON MOBILE + SIMULTANEOUS SPLIT ON DESKTOP -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
 
-        <!-- LEFT ARCHITECTURAL TOOLKIT SIDEBAR -->
-        <aside class="w-full lg:w-72 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 p-3 flex flex-row lg:flex-col justify-between gap-3 shrink-0 overflow-x-auto lg:overflow-y-auto">
-            <div class="flex lg:flex-col gap-3 w-full">
+        <!-- TAB 3 (MOBILE) / LEFT SIDEBAR (DESKTOP): ARCHITECTURAL TOOLS & COMPONENTS -->
+        <aside id="pane-tools" class="hidden lg:flex w-full lg:w-72 flex-1 lg:flex-initial bg-slate-900 lg:border-r border-slate-800 p-3 flex-col justify-between gap-3 overflow-y-auto min-h-0">
+            <div class="flex flex-col gap-3 w-full">
                 <!-- Drawing Tools Section -->
                 <div>
-                    <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1 hidden lg:block">2D Drawing Tools</div>
-                    <div class="grid grid-cols-5 lg:grid-cols-2 gap-1.5">
-                        <button onclick="setTool('room')" id="tool-room" class="tool-btn active p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                    <div class="flex items-center justify-between mb-2 px-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">2D Drawing Tools</span>
+                        <span class="text-[10px] text-blue-400 lg:hidden">Select a tool to draw on 2D Plan</span>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-2 gap-2 lg:gap-1.5">
+                        <button onclick="selectToolAndReturn('room')" id="tool-room" class="tool-btn active p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="square" class="w-4 h-4"></i>
                             <span>Room Box</span>
                         </button>
-                        <button onclick="setTool('region')" id="tool-region" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-emerald-500/40 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition" title="Select points to mark & name any custom polygon region">
+                        <button onclick="selectToolAndReturn('region')" id="tool-region" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-emerald-500/40 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition" title="Select points to mark & name any custom polygon region">
                             <i data-lucide="pentagon" class="w-4 h-4 text-emerald-400"></i>
                             <span>Mark Region</span>
                         </button>
-                        <button onclick="setTool('wall')" id="tool-wall" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                        <button onclick="selectToolAndReturn('wall')" id="tool-wall" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="minus" class="w-4 h-4"></i>
                             <span>Single Wall</span>
                         </button>
-                        <button onclick="setTool('slab')" id="tool-slab" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                        <button onclick="selectToolAndReturn('slab')" id="tool-slab" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="grid" class="w-4 h-4"></i>
                             <span>Balcony/Slab</span>
                         </button>
-                        <button onclick="setTool('door')" id="tool-door" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                        <button onclick="selectToolAndReturn('door')" id="tool-door" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="door-open" class="w-4 h-4 text-amber-400"></i>
                             <span>Add Door</span>
                         </button>
-                        <button onclick="setTool('window')" id="tool-window" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                        <button onclick="selectToolAndReturn('window')" id="tool-window" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="columns" class="w-4 h-4 text-sky-400"></i>
                             <span>Window</span>
                         </button>
-                        <button onclick="setTool('stairs')" id="tool-stairs" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                        <button onclick="selectToolAndReturn('stairs')" id="tool-stairs" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i>
                             <span>Staircase</span>
                         </button>
-                        <button onclick="setTool('furniture')" id="tool-furniture" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-amber-500/40 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
+                        <button onclick="selectToolAndReturn('furniture')" id="tool-furniture" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-amber-500/40 flex flex-col items-center justify-center gap-1 text-xs font-medium hover:bg-slate-800 transition">
                             <i data-lucide="armchair" class="w-4 h-4 text-amber-300"></i>
                             <span>Furniture</span>
                         </button>
-                        <button onclick="rotatePlacementDir()" id="tool-rotate" class="p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center gap-1.5 text-xs font-medium hover:bg-slate-700 text-slate-200 transition" title="Rotate stair or furniture orientation (R)">
+                        <button onclick="rotatePlacementDir()" id="tool-rotate" class="p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-1.5 text-xs font-medium hover:bg-slate-700 text-slate-200 transition" title="Rotate stair or furniture orientation (R)">
                             <i data-lucide="rotate-cw" class="w-4 h-4 text-emerald-400"></i>
                             <span id="stair-dir-label">Dir: N (0°)</span>
                         </button>
-                        <button onclick="setTool('erase')" id="tool-erase" class="tool-btn p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center gap-1.5 text-xs font-medium hover:bg-rose-950/60 text-rose-300 transition">
+                        <button onclick="selectToolAndReturn('erase')" id="tool-erase" class="tool-btn p-2.5 lg:p-2 rounded-xl bg-slate-800/90 border border-slate-700/80 flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-1.5 text-xs font-medium hover:bg-rose-950/60 text-rose-300 transition">
                             <i data-lucide="eraser" class="w-4 h-4 text-rose-400"></i>
                             <span>Eraser</span>
                         </button>
@@ -173,22 +185,22 @@
                 </div>
 
                 <!-- Dynamic Tool Configuration Panel (Doors, Stairs, Furniture) -->
-                <div class="hidden lg:flex flex-col gap-2 pt-2 border-t border-slate-800">
+                <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
                     <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-1">Component Options</div>
 
                     <!-- Door Type & Width Selector -->
-                    <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <div class="p-2.5 lg:p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
                         <div class="flex items-center justify-between text-[11px] text-amber-300 font-semibold">
                             <span class="flex items-center gap-1"><i data-lucide="door-open" class="w-3.5 h-3.5"></i> Door Type & Size</span>
                         </div>
                         <div class="grid grid-cols-2 gap-1.5">
-                            <select id="door-type-select" onchange="currentDoorType=this.value; setTool('door');" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                            <select id="door-type-select" onchange="currentDoorType=this.value; setTool('door');" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 lg:py-1 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
                                 <option value="single" selected>Single Swing</option>
                                 <option value="double">Double French</option>
                                 <option value="sliding">Sliding Glass</option>
                                 <option value="arch">Open Archway</option>
                             </select>
-                            <select id="door-width-select" onchange="currentDoorWidth=parseFloat(this.value); setTool('door');" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                            <select id="door-width-select" onchange="currentDoorWidth=parseFloat(this.value); setTool('door');" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 lg:py-1 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
                                 <option value="2.5">2.5 ft (Bath)</option>
                                 <option value="3" selected>3.0 ft (Room)</option>
                                 <option value="3.5">3.5 ft (Main)</option>
@@ -201,11 +213,11 @@
                     </div>
 
                     <!-- Staircase Style Selector -->
-                    <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <div class="p-2.5 lg:p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
                         <div class="flex items-center justify-between text-[11px] text-purple-300 font-semibold">
                             <span class="flex items-center gap-1"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Staircase Style</span>
                         </div>
-                        <select id="stair-type-select" onchange="currentStairType=this.value; setTool('stairs');" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                        <select id="stair-type-select" onchange="currentStairType=this.value; setTool('stairs');" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 lg:py-1 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
                             <option value="straight" selected>Straight Flight (3×9 ft)</option>
                             <option value="spiral">Curl / Spiral Stair (6×6 ft)</option>
                             <option value="lshape">L-Shaped Quarter-Turn (6×6 ft)</option>
@@ -214,11 +226,11 @@
                     </div>
 
                     <!-- Furniture Catalog Selector -->
-                    <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <div class="p-2.5 lg:p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
                         <div class="flex items-center justify-between text-[11px] text-emerald-300 font-semibold">
                             <span class="flex items-center gap-1"><i data-lucide="armchair" class="w-3.5 h-3.5"></i> Furniture Item</span>
                         </div>
-                        <select id="furniture-item-select" onchange="currentFurnitureType=this.value; setTool('furniture');" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <select id="furniture-item-select" onchange="currentFurnitureType=this.value; setTool('furniture');" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 lg:py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
                             <option value="bed_king" selected>King Bed (6×6.5 ft)</option>
                             <option value="bed_single">Single Bed (3.5×6.5 ft)</option>
                             <option value="sofa_3">3-Seater Sofa (7×3 ft)</option>
@@ -235,19 +247,19 @@
                 </div>
 
                 <!-- Room & Region Color Palette -->
-                <div class="hidden lg:block pt-2 border-t border-slate-800">
+                <div class="pt-2 border-t border-slate-800">
                     <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">Floor / Region Color</div>
-                    <div class="grid grid-cols-6 gap-1.5 px-1" id="color-palette">
-                        <button onclick="setFloorColor('#e2e8f0')" data-color="#e2e8f0" class="color-swatch h-6 rounded-lg border-2 border-white shadow-sm" style="background:#e2e8f0" title="Marble White"></button>
-                        <button onclick="setFloorColor('#d97706')" data-color="#d97706" class="color-swatch h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#d97706" title="Warm Oak Wood"></button>
-                        <button onclick="setFloorColor('#94a3b8')" data-color="#94a3b8" class="color-swatch h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#94a3b8" title="Concrete Slate"></button>
-                        <button onclick="setFloorColor('#0f766e')" data-color="#0f766e" class="color-swatch h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#0f766e" title="Terrace Teal"></button>
-                        <button onclick="setFloorColor('#3b82f6')" data-color="#3b82f6" class="color-swatch h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#3b82f6" title="Blueprint Zone Blue"></button>
-                        <button onclick="setFloorColor('#10b981')" data-color="#10b981" class="color-swatch h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#10b981" title="Garden / Lawn Emerald"></button>
+                    <div class="grid grid-cols-6 gap-2 px-1" id="color-palette">
+                        <button onclick="setFloorColor('#e2e8f0')" data-color="#e2e8f0" class="color-swatch h-8 lg:h-6 rounded-lg border-2 border-white shadow-sm" style="background:#e2e8f0" title="Marble White"></button>
+                        <button onclick="setFloorColor('#d97706')" data-color="#d97706" class="color-swatch h-8 lg:h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#d97706" title="Warm Oak Wood"></button>
+                        <button onclick="setFloorColor('#94a3b8')" data-color="#94a3b8" class="color-swatch h-8 lg:h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#94a3b8" title="Concrete Slate"></button>
+                        <button onclick="setFloorColor('#0f766e')" data-color="#0f766e" class="color-swatch h-8 lg:h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#0f766e" title="Terrace Teal"></button>
+                        <button onclick="setFloorColor('#3b82f6')" data-color="#3b82f6" class="color-swatch h-8 lg:h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#3b82f6" title="Blueprint Zone Blue"></button>
+                        <button onclick="setFloorColor('#10b981')" data-color="#10b981" class="color-swatch h-8 lg:h-6 rounded-lg border-2 border-transparent opacity-80" style="background:#10b981" title="Garden / Lawn Emerald"></button>
                     </div>
                 </div>
 
-                <!-- Blueprint & 3D Settings -->
+                <!-- Desktop-Only Blueprint & 3D Settings (On Mobile these live in dedicated Settings Tab so nothing overlaps) -->
                 <div class="hidden lg:flex flex-col gap-2 pt-2 border-t border-slate-800">
                     <label class="flex items-center justify-between px-2 py-1 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs cursor-pointer">
                         <span class="text-slate-300">Onion-Skin Lower Floor</span>
@@ -269,7 +281,7 @@
                 </div>
             </div>
 
-            <!-- Live Building Summary Card -->
+            <!-- Live Building Summary Card (Desktop) -->
             <div class="hidden lg:block bg-slate-950/90 border border-slate-800/90 rounded-xl p-2.5 space-y-1">
                 <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                     <span>Building Stats</span>
@@ -289,93 +301,192 @@
             </div>
         </aside>
 
-        <!-- CENTER-LEFT PANE: 2D INTERACTIVE BLUEPRINT CANVAS -->
-        <section class="flex-1 flex flex-col bg-slate-950 relative border-b lg:border-b-0 lg:border-r border-slate-800 min-h-[45vh] lg:min-h-0">
-            <!-- Dedicated Top Header Bar (NEVER overlaps the 2D drawing grid) -->
-            <div class="min-h-[44px] bg-slate-900/95 border-b border-slate-800 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-10">
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></span>
-                    <span class="text-xs font-semibold text-white" id="active-2d-label">2D Blueprint — Ground Floor (F1)</span>
-                    <span id="grid-scale-label" class="text-[11px] text-slate-400 border-l border-slate-700 pl-2">1 Block = 1 ft</span>
+        <!-- TAB 1 (MOBILE) / CENTER-LEFT PANE (DESKTOP): 2D INTERACTIVE BLUEPRINT CANVAS -->
+        <section id="pane-2d" class="flex-1 flex flex-col bg-slate-950 relative lg:border-r border-slate-800 min-h-0">
+            <!-- Dedicated Top Header Bar (Clean single-line layout, zero overlap) -->
+            <div class="h-10 sm:h-11 bg-slate-900/95 border-b border-slate-800 px-2.5 sm:px-3 flex items-center justify-between gap-2 shrink-0 z-10">
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
+                    <span class="text-xs font-semibold text-white truncate" id="active-2d-label">2D — Ground Floor (F1)</span>
+                    <span id="grid-scale-label" class="hidden sm:inline text-[11px] text-slate-400 border-l border-slate-700 pl-2 shrink-0">1 Block = 1 ft</span>
                 </div>
 
-                <!-- Dynamic Polygon Action Bar (Visible while drawing a custom polygon region) -->
-                <div id="polygon-action-bar" class="hidden bg-emerald-950 border border-emerald-500/60 px-2.5 py-1 rounded-xl items-center gap-2 shadow-sm">
-                    <span class="text-[11px] text-emerald-200 font-medium" id="polygon-pts-count">0 pts selected</span>
-                    <button onclick="openRegionModal()" class="px-2.5 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs rounded-lg transition">
+                <!-- Active Tool Quick Pill on Mobile -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button onclick="setMobileTab('tools')" id="mobile-active-tool-pill" class="lg:hidden bg-blue-600/20 border border-blue-500/40 text-blue-300 px-2 py-0.5 rounded-lg text-[11px] font-semibold flex items-center gap-1">
+                        <span id="mobile-tool-name">Room Box</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                    </button>
+                    <button onclick="rotatePlacementDir()" id="mobile-quick-rotate" class="hidden lg:hidden bg-slate-800 border border-slate-700 text-emerald-300 px-2 py-0.5 rounded-lg text-[11px] font-semibold items-center gap-1">
+                        <i data-lucide="rotate-cw" class="w-3 h-3"></i>
+                        <span id="mobile-dir-badge">N</span>
+                    </button>
+                    <div class="bg-slate-950 border border-slate-800 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-[11px] text-slate-300 font-mono">
+                        <span id="cursor-coords">X: 0 ft, Y: 0 ft</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated Sub-bar for Polygon Region Drawing (Only shown when drawing a polygon, never overlaps grid) -->
+            <div id="polygon-action-bar" class="hidden bg-emerald-950/95 border-b border-emerald-500/40 px-3 py-1.5 items-center justify-between gap-2 shrink-0 z-10">
+                <span class="text-xs text-emerald-200 font-semibold" id="polygon-pts-count">0 pts selected</span>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="openRegionModal()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg transition">
                         Finish & Name
                     </button>
-                    <button onclick="undoLastPolygonPoint()" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition">
-                        Undo Pt
+                    <button onclick="undoLastPolygonPoint()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition">
+                        Undo
                     </button>
-                    <button onclick="cancelPolygonDraft()" class="px-2 py-0.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs rounded-lg border border-rose-500/30 transition">
+                    <button onclick="cancelPolygonDraft()" class="px-2 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs rounded-lg border border-rose-500/30 transition">
                         Cancel
                     </button>
-                </div>
-
-                <div class="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-[11px] text-slate-300 font-mono">
-                    <span id="cursor-coords">X: 0 ft, Y: 0 ft</span>
                 </div>
             </div>
 
             <!-- 2D HTML5 Canvas Container -->
-            <div id="canvas2d-container" class="flex-1 w-full h-full relative overflow-hidden flex items-center justify-center">
+            <div id="canvas2d-container" class="flex-1 w-full h-full relative overflow-hidden flex items-center justify-center min-h-0">
                 <canvas id="canvas2d" class="cursor-crosshair block"></canvas>
             </div>
 
             <!-- Bottom Status / Instructions Bar -->
-            <div class="h-8 bg-slate-900/90 border-t border-slate-800/80 px-4 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-                <span><strong>Tip:</strong> Press <strong>R</strong> to rotate Stairs or Furniture • Use <strong>Mark Region</strong> for custom polygon zones.</span>
-                <span id="plot-summary-label" class="hidden sm:inline text-emerald-400 font-medium">30×40 Grid (30 ft Front × 40 ft Depth Plot)</span>
+            <div class="h-7 sm:h-8 bg-slate-900/90 border-t border-slate-800/80 px-2.5 sm:px-4 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 shrink-0">
+                <span class="truncate" id="mobile-2d-hint"><strong>Touch / Mouse:</strong> Drag to draw • Tap to place.</span>
+                <span id="plot-summary-label" class="hidden md:inline text-emerald-400 font-medium shrink-0 ml-2">30×40 Grid (30 ft Front × 40 ft Depth Plot)</span>
             </div>
         </section>
 
-        <!-- RIGHT PANE: SIMULTANEOUS 3D INTERACTIVE VIEWPORT -->
-        <section class="flex-1 flex flex-col bg-slate-900 relative min-h-[45vh] lg:min-h-0">
-            <!-- Floating 3D Controls Overlay -->
-            <div class="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 z-10 pointer-events-none">
+        <!-- TAB 2 (MOBILE) / RIGHT PANE (DESKTOP): SIMULTANEOUS 3D INTERACTIVE VIEWPORT -->
+        <section id="pane-3d" class="hidden lg:flex flex-1 flex-col bg-slate-900 relative min-h-0">
+            <!-- Dedicated Top Bar for 3D Controls (Non-overlapping header on mobile, clean floating bar on desktop) -->
+            <div class="bg-slate-900/95 lg:bg-transparent border-b border-slate-800 lg:border-b-0 px-2.5 py-1.5 lg:p-0 lg:absolute lg:top-3 lg:left-3 lg:right-3 flex items-center justify-between gap-1.5 z-10 shrink-0 lg:pointer-events-none">
                 <!-- 3D View Mode Switcher -->
-                <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 p-1 rounded-xl flex items-center gap-1 pointer-events-auto shadow-lg">
-                    <button onclick="set3DViewMode('all')" id="view-all" class="view-mode-btn active px-2.5 py-1 rounded-lg text-xs font-medium transition">
-                        Full Building
+                <div class="bg-slate-950 lg:bg-slate-900/90 lg:backdrop-blur-md border border-slate-800 p-0.5 sm:p-1 rounded-xl flex items-center gap-0.5 sm:gap-1 pointer-events-auto shadow-sm lg:shadow-lg">
+                    <button onclick="set3DViewMode('all')" id="view-all" class="view-mode-btn active px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium transition">
+                        Full
                     </button>
-                    <button onclick="set3DViewMode('exploded')" id="view-exploded" class="view-mode-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
-                        Exploded Floors
+                    <button onclick="set3DViewMode('exploded')" id="view-exploded" class="view-mode-btn px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium text-slate-300 hover:text-white transition">
+                        Exploded
                     </button>
-                    <button onclick="set3DViewMode('cutaway')" id="view-cutaway" class="view-mode-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
-                        Active Cutaway
+                    <button onclick="set3DViewMode('cutaway')" id="view-cutaway" class="view-mode-btn px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium text-slate-300 hover:text-white transition">
+                        Cutaway
                     </button>
                 </div>
 
                 <!-- Camera Preset Buttons -->
-                <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 p-1 rounded-xl flex items-center gap-1 pointer-events-auto shadow-lg">
-                    <button onclick="resetCamera('iso')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1">
+                <div class="bg-slate-950 lg:bg-slate-900/90 lg:backdrop-blur-md border border-slate-800 p-0.5 sm:p-1 rounded-xl flex items-center gap-0.5 sm:gap-1 pointer-events-auto shadow-sm lg:shadow-lg">
+                    <button onclick="resetCamera('iso')" class="px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1">
                         <i data-lucide="box" class="w-3.5 h-3.5 text-blue-400"></i> Iso
                     </button>
-                    <button onclick="resetCamera('top')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1">
+                    <button onclick="resetCamera('top')" class="px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1">
                         <i data-lucide="compass" class="w-3.5 h-3.5 text-emerald-400"></i> Top
                     </button>
-                    <button onclick="toggleDayNight()" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1">
+                    <button onclick="toggleDayNight()" class="px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1">
                         <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-400"></i> Light
                     </button>
                 </div>
             </div>
 
             <!-- 3D WebGL Container -->
-            <div id="canvas3d-container" class="flex-1 w-full h-full relative overflow-hidden"></div>
+            <div id="canvas3d-container" class="flex-1 w-full h-full relative overflow-hidden min-h-0"></div>
 
             <!-- 3D Navigation Footer -->
-            <div class="h-8 bg-slate-900/90 border-t border-slate-800/80 px-4 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-                <span><strong>3D Orbit:</strong> Left-Click + Drag to Rotate • Right-Click + Drag to Pan • Scroll to Zoom</span>
-                <span id="active-3d-info" class="text-blue-400 font-medium">Real-Time 3D Sync Active</span>
+            <div class="h-7 sm:h-8 bg-slate-900/90 border-t border-slate-800/80 px-2.5 sm:px-4 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 shrink-0">
+                <span class="truncate"><strong>3D Orbit:</strong> 1-Finger Drag Rotate • 2-Finger Pinch/Pan</span>
+                <span id="active-3d-info" class="text-blue-400 font-medium shrink-0 ml-2">Live 3D Sync</span>
+            </div>
+        </section>
+
+        <!-- TAB 4 (MOBILE ONLY): PLOT, FLOOR SETTINGS & BUILDING STATS -->
+        <section id="pane-settings" class="hidden flex-1 flex-col bg-slate-900 p-3.5 overflow-y-auto gap-3.5 min-h-0">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 text-blue-400"></i>
+                    Plot, Floor & Building Settings
+                </h2>
+                <button onclick="setMobileTab('2d')" class="px-2.5 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg">Done</button>
+            </div>
+
+            <!-- Plot Size Configuration -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="text-xs font-semibold text-slate-300">Plot Dimensions (Frontage × Depth)</div>
+                <div class="flex items-center gap-2">
+                    <input id="plot-w-input-mob" type="number" min="10" max="120" value="30" oninput="document.getElementById('plot-w-input').value=this.value" class="flex-1 bg-slate-900 text-white text-center font-semibold rounded-lg border border-slate-700 px-2 py-2 text-sm">
+                    <span class="text-slate-400 font-bold">×</span>
+                    <input id="plot-d-input-mob" type="number" min="10" max="120" value="40" oninput="document.getElementById('plot-d-input').value=this.value" class="flex-1 bg-slate-900 text-white text-center font-semibold rounded-lg border border-slate-700 px-2 py-2 text-sm">
+                    <button onclick="applyPlotDimensions(); setMobileTab('2d');" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold">Apply</button>
+                </div>
+            </div>
+
+            <!-- Blueprint & 3D Toggles -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
+                <div class="text-xs font-semibold text-slate-300">Display & 3D Structure</div>
+                <label class="flex items-center justify-between text-xs cursor-pointer">
+                    <span class="text-slate-300">Onion-Skin Lower Floor Guide</span>
+                    <input type="checkbox" id="onion-skin-toggle-mob" checked onchange="document.getElementById('onion-skin-toggle').checked=this.checked; draw2D();" class="accent-blue-500 rounded w-4 h-4">
+                </label>
+
+                <label class="flex items-center justify-between text-xs cursor-pointer">
+                    <span class="text-slate-300">Auto Roof Cap on Top Floor</span>
+                    <input type="checkbox" id="roof-toggle-mob" onchange="document.getElementById('roof-toggle').checked=this.checked; rebuild3D();" class="accent-blue-500 rounded w-4 h-4">
+                </label>
+
+                <div class="pt-1 border-t border-slate-800/80 text-xs">
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-slate-400">Floor Ceiling Height</span>
+                        <span id="wall-height-val-mob" class="text-blue-400 font-semibold">10.0 ft</span>
+                    </div>
+                    <input type="range" id="wall-height-slider-mob" min="8" max="15" step="0.5" value="10" oninput="document.getElementById('wall-height-slider').value=this.value; updateWallHeight(this.value);" class="w-full accent-blue-500">
+                </div>
+            </div>
+
+            <!-- Floor Copy Action -->
+            <button onclick="copyLowerFloor(); setMobileTab('2d');" class="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-2">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                Copy Layout From Floor Below
+            </button>
+
+            <!-- Live Building Stats -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>Total Building Summary</span>
+                    <span class="text-emerald-400 font-mono" id="total-area-stat-mob">0 sq ft</span>
+                </div>
+                <div class="text-xs text-slate-300 flex justify-between">
+                    <span>Active Floor Walls / Openings:</span>
+                    <span class="font-mono font-semibold text-white"><span id="stat-walls-mob">0</span> / <span id="stat-openings-mob">0</span></span>
+                </div>
+                <div class="text-xs text-slate-300 flex justify-between">
+                    <span>Active Floor Regions / Furniture:</span>
+                    <span class="font-mono font-semibold text-emerald-400"><span id="stat-regions-mob">0</span> / <span id="stat-furniture-mob">0</span></span>
+                </div>
             </div>
         </section>
 
     </div>
 
+    <!-- DEDICATED MOBILE BOTTOM NAVIGATION BAR (4 Non-Overlapping Tabs) -->
+    <nav class="lg:hidden h-14 bg-slate-900 border-t border-slate-800 grid grid-cols-4 shrink-0 z-30">
+        <button onclick="setMobileTab('2d')" id="mob-tab-2d" class="mob-bottom-tab active border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-400 transition">
+            <i data-lucide="pen-tool" class="w-4 h-4"></i>
+            <span>2D Plan</span>
+        </button>
+        <button onclick="setMobileTab('3d')" id="mob-tab-3d" class="mob-bottom-tab border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-400 transition">
+            <i data-lucide="box" class="w-4 h-4"></i>
+            <span>3D View</span>
+        </button>
+        <button onclick="setMobileTab('tools')" id="mob-tab-tools" class="mob-bottom-tab border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-400 transition">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            <span>Tools</span>
+        </button>
+        <button onclick="setMobileTab('settings')" id="mob-tab-settings" class="mob-bottom-tab border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-400 transition">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+            <span>Settings</span>
+        </button>
+    </nav>
+
     <!-- CUSTOM POLYGON REGION NAMING MODAL -->
     <div id="region-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
@@ -386,7 +497,7 @@
                         <p class="text-[11px] text-slate-400" id="modal-region-area">Polygon Area: 0 sq ft</p>
                     </div>
                 </div>
-                <button onclick="closeRegionModal()" class="text-slate-400 hover:text-white">
+                <button onclick="closeRegionModal()" class="text-slate-400 hover:text-white p-1">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -397,26 +508,26 @@
                 <input id="region-name-input" type="text" placeholder="e.g., L-Shaped Living Lounge, Courtyard, Master Suite..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
                 <!-- Quick Preset Chips -->
                 <div class="flex flex-wrap gap-1.5 mt-2">
-                    <button type="button" onclick="setQuickRegionName('Living Lounge')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Living Lounge</button>
-                    <button type="button" onclick="setQuickRegionName('Master Bedroom')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Master Bedroom</button>
-                    <button type="button" onclick="setQuickRegionName('Kitchen & Dining')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Kitchen & Dining</button>
-                    <button type="button" onclick="setQuickRegionName('Wrap Balcony')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Wrap Balcony</button>
-                    <button type="button" onclick="setQuickRegionName('Garden Lawn')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Garden Lawn</button>
-                    <button type="button" onclick="setQuickRegionName('Pooja / Study')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Pooja / Study</button>
+                    <button type="button" onclick="setQuickRegionName('Living Lounge')" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Living Lounge</button>
+                    <button type="button" onclick="setQuickRegionName('Master Bedroom')" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Master Bedroom</button>
+                    <button type="button" onclick="setQuickRegionName('Kitchen & Dining')" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Kitchen & Dining</button>
+                    <button type="button" onclick="setQuickRegionName('Wrap Balcony')" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Wrap Balcony</button>
+                    <button type="button" onclick="setQuickRegionName('Garden Lawn')" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Garden Lawn</button>
+                    <button type="button" onclick="setQuickRegionName('Pooja / Study')" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700">Pooja / Study</button>
                 </div>
             </div>
 
             <!-- Region Highlight Color Picker -->
             <div>
                 <label class="block text-xs font-semibold text-slate-300 mb-1.5">Highlight Color</label>
-                <div class="flex items-center gap-2" id="modal-color-swatches">
-                    <button type="button" onclick="selectModalColor('#3b82f6')" data-color="#3b82f6" class="modal-swatch w-7 h-7 rounded-lg border-2 border-white" style="background:#3b82f6"></button>
-                    <button type="button" onclick="selectModalColor('#10b981')" data-color="#10b981" class="modal-swatch w-7 h-7 rounded-lg border-2 border-transparent opacity-80" style="background:#10b981"></button>
-                    <button type="button" onclick="selectModalColor('#f59e0b')" data-color="#f59e0b" class="modal-swatch w-7 h-7 rounded-lg border-2 border-transparent opacity-80" style="background:#f59e0b"></button>
-                    <button type="button" onclick="selectModalColor('#a855f7')" data-color="#a855f7" class="modal-swatch w-7 h-7 rounded-lg border-2 border-transparent opacity-80" style="background:#a855f7"></button>
-                    <button type="button" onclick="selectModalColor('#ec4899')" data-color="#ec4899" class="modal-swatch w-7 h-7 rounded-lg border-2 border-transparent opacity-80" style="background:#ec4899"></button>
-                    <button type="button" onclick="selectModalColor('#06b6d4')" data-color="#06b6d4" class="modal-swatch w-7 h-7 rounded-lg border-2 border-transparent opacity-80" style="background:#06b6d4"></button>
-                    <button type="button" onclick="selectModalColor('#e2e8f0')" data-color="#e2e8f0" class="modal-swatch w-7 h-7 rounded-lg border-2 border-transparent opacity-80" style="background:#e2e8f0"></button>
+                <div class="flex items-center gap-2 flex-wrap" id="modal-color-swatches">
+                    <button type="button" onclick="selectModalColor('#3b82f6')" data-color="#3b82f6" class="modal-swatch w-8 h-8 rounded-lg border-2 border-white" style="background:#3b82f6"></button>
+                    <button type="button" onclick="selectModalColor('#10b981')" data-color="#10b981" class="modal-swatch w-8 h-8 rounded-lg border-2 border-transparent opacity-80" style="background:#10b981"></button>
+                    <button type="button" onclick="selectModalColor('#f59e0b')" data-color="#f59e0b" class="modal-swatch w-8 h-8 rounded-lg border-2 border-transparent opacity-80" style="background:#f59e0b"></button>
+                    <button type="button" onclick="selectModalColor('#a855f7')" data-color="#a855f7" class="modal-swatch w-8 h-8 rounded-lg border-2 border-transparent opacity-80" style="background:#a855f7"></button>
+                    <button type="button" onclick="selectModalColor('#ec4899')" data-color="#ec4899" class="modal-swatch w-8 h-8 rounded-lg border-2 border-transparent opacity-80" style="background:#ec4899"></button>
+                    <button type="button" onclick="selectModalColor('#06b6d4')" data-color="#06b6d4" class="modal-swatch w-8 h-8 rounded-lg border-2 border-transparent opacity-80" style="background:#06b6d4"></button>
+                    <button type="button" onclick="selectModalColor('#e2e8f0')" data-color="#e2e8f0" class="modal-swatch w-8 h-8 rounded-lg border-2 border-transparent opacity-80" style="background:#e2e8f0"></button>
                 </div>
             </div>
 
@@ -463,6 +574,55 @@
         let modalSelectedColor = '#3b82f6';
         let stairDirection = 0; // 0: North (0°), 1: East (90°), 2: South (180°), 3: West (270°)
         const STAIR_DIRS = ['N (0°)', 'E (90°)', 'S (180°)', 'W (270°)'];
+
+        // Mobile Tab Controller (Non-overlapping 4-tab layout on <1024px, Simultaneous Split on >=1024px)
+        let activeMobileTab = '2d'; // '2d', '3d', 'tools', 'settings'
+
+        function setMobileTab(tab) {
+            activeMobileTab = tab;
+            const pane2d = document.getElementById('pane-2d');
+            const pane3d = document.getElementById('pane-3d');
+            const paneTools = document.getElementById('pane-tools');
+            const paneSettings = document.getElementById('pane-settings');
+
+            ['2d', '3d', 'tools', 'settings'].forEach(t => {
+                const btn = document.getElementById(`mob-tab-${t}`);
+                if (btn) {
+                    if (t === tab) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+
+            if (window.innerWidth < 1024) {
+                pane2d.classList.add('hidden');
+                pane3d.classList.add('hidden');
+                paneTools.classList.add('hidden');
+                paneSettings.classList.add('hidden');
+
+                if (tab === '2d') pane2d.classList.remove('hidden');
+                else if (tab === '3d') pane3d.classList.remove('hidden');
+                else if (tab === 'tools') paneTools.classList.remove('hidden');
+                else if (tab === 'settings') paneSettings.classList.remove('hidden');
+            } else {
+                // Desktop: Always show Tools sidebar + 2D Plan + 3D View simultaneously
+                pane2d.classList.remove('hidden');
+                pane3d.classList.remove('hidden');
+                paneTools.classList.remove('hidden');
+                paneSettings.classList.add('hidden');
+            }
+
+            requestAnimationFrame(() => {
+                resize2DCanvas();
+                resize3DCanvas();
+            });
+        }
+
+        function selectToolAndReturn(tool) {
+            setTool(tool);
+            if (window.innerWidth < 1024) {
+                setMobileTab('2d');
+            }
+        }
 
         // Configurable Door, Stair & Furniture States
         let currentDoorType = 'single'; // 'single', 'double', 'sliding', 'arch'
@@ -572,7 +732,11 @@
             document.getElementById('cursor-coords').textContent =
                 `X: ${formatLength(currentMouseGrid.x)}, Y: ${formatLength(currentMouseGrid.y)}`;
 
-            document.getElementById('wall-height-val').textContent = formatHeight(wallHeight);
+            const formattedH = formatHeight(wallHeight);
+            document.getElementById('wall-height-val').textContent = formattedH;
+            const mobVal = document.getElementById('wall-height-val-mob');
+            if (mobVal) mobVal.textContent = formattedH;
+
             document.getElementById('tool-hint').textContent = getToolHint(currentTool);
 
             draw2D();
@@ -586,6 +750,10 @@
             GRID_D = Math.max(10, Math.min(120, isNaN(dInput) ? 40 : dInput));
             document.getElementById('plot-w-input').value = GRID_W;
             document.getElementById('plot-d-input').value = GRID_D;
+            const mobW = document.getElementById('plot-w-input-mob');
+            const mobD = document.getElementById('plot-d-input-mob');
+            if (mobW) mobW.value = GRID_W;
+            if (mobD) mobD.value = GRID_D;
             updatePlotSummaryLabel();
             resize2DCanvas();
             rebuild3D();
@@ -688,6 +856,8 @@
 
         function resize2DCanvas() {
             const rect = container2d.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+
             const dpr = window.devicePixelRatio || 1;
             canvas2d.width = rect.width * dpr;
             canvas2d.height = rect.height * dpr;
@@ -695,11 +865,12 @@
             canvas2d.style.height = rect.height + 'px';
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-            const paddingX = 28;
-            const paddingY = 24;
-            const availW = Math.max(120, rect.width - paddingX * 2);
-            const availH = Math.max(120, rect.height - paddingY * 2);
-            cellPixelSize = Math.max(6, Math.floor(Math.min(availW / GRID_W, availH / GRID_D)));
+            const isSmallScreen = rect.width < 520;
+            const paddingX = isSmallScreen ? 18 : 28;
+            const paddingY = isSmallScreen ? 18 : 24;
+            const availW = Math.max(80, rect.width - paddingX * 2);
+            const availH = Math.max(80, rect.height - paddingY * 2);
+            cellPixelSize = Math.max(5, Math.floor(Math.min(availW / GRID_W, availH / GRID_D)));
 
             gridOriginX = Math.floor((rect.width - cellPixelSize * GRID_W) / 2);
             gridOriginY = Math.floor((rect.height - cellPixelSize * GRID_D) / 2);
@@ -740,7 +911,7 @@
             }
         }
 
-        function findClosestWall(floorIdx, gx, gy, maxThreshold = 0.65) {
+        function findClosestWall(floorIdx, gx, gy, maxThreshold = 0.85) {
             const walls = floorsData[floorIdx].walls;
             let best = null;
             let minDist = maxThreshold;
@@ -788,21 +959,18 @@
             ctx.lineWidth = 1.3;
 
             if (type === 'spiral') {
-                // Circular / Curl Staircase
                 const r = rawW / 2;
                 ctx.beginPath();
                 ctx.arc(r, r, r - 1, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                // Center column
                 ctx.beginPath();
                 ctx.arc(r, r, r * 0.22, 0, Math.PI * 2);
                 ctx.fillStyle = '#fde047';
                 ctx.fill();
                 ctx.stroke();
 
-                // Radial wedges
                 const wedges = 12;
                 for (let i = 0; i < wedges; i++) {
                     const ang = (i * Math.PI * 2) / wedges;
@@ -812,14 +980,12 @@
                     ctx.stroke();
                 }
 
-                // Curl arrow
                 ctx.beginPath();
                 ctx.arc(r, r, r * 0.62, 0.2, Math.PI * 1.45);
                 ctx.strokeStyle = '#fde047';
                 ctx.lineWidth = 1.8;
                 ctx.stroke();
             } else if (type === 'lshape') {
-                // L-Shaped Staircase (6x6)
                 const half = rawW / 2;
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
@@ -832,7 +998,6 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // Steps on vertical leg & horizontal leg
                 for (let i = 1; i <= 4; i++) {
                     const sy = half + ((rawL - half) * i) / 5;
                     ctx.beginPath();
@@ -846,15 +1011,13 @@
                     ctx.lineTo(sx, half);
                     ctx.stroke();
                 }
-                ctx.strokeRect(0, 0, half, half); // Landing
+                ctx.strokeRect(0, 0, half, half);
             } else if (type === 'uturn') {
-                // U-Turn Dog-Legged Staircase (6x8)
                 const halfW = rawW / 2;
                 const landD = rawL * 0.3;
                 ctx.fillRect(0, 0, rawW, rawL);
                 ctx.strokeRect(0, 0, rawW, rawL);
 
-                // Landing line
                 ctx.beginPath();
                 ctx.moveTo(0, landD);
                 ctx.lineTo(rawW, landD);
@@ -873,7 +1036,6 @@
                     ctx.stroke();
                 }
 
-                // U-Turn Arrow
                 ctx.strokeStyle = '#fde047';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -883,7 +1045,6 @@
                 ctx.lineTo(rawW * 0.75, rawL * 0.85);
                 ctx.stroke();
             } else {
-                // Straight Flight (3x9)
                 ctx.fillRect(0, 0, rawW, rawL);
                 ctx.strokeRect(0, 0, rawW, rawL);
 
@@ -935,10 +1096,8 @@
             ctx.fill();
             ctx.stroke();
 
-            // Specific top-down architectural details
             ctx.fillStyle = spec.accent;
             if (item.itemType === 'bed_king' || item.itemType === 'bed_single') {
-                // Headboard & pillows
                 ctx.fillRect(2, 2, rawW - 4, rawL * 0.22);
                 const pillows = item.itemType === 'bed_king' ? 2 : 1;
                 const pw = (rawW - 10) / pillows;
@@ -946,13 +1105,11 @@
                     ctx.fillRect(4 + i * (pw + 2), 4, pw - 2, rawL * 0.16);
                 }
             } else if (item.itemType === 'sofa_3') {
-                // Backrest & cushions
                 ctx.fillRect(2, 2, rawW - 4, rawL * 0.28);
             } else if (item.itemType === 'sofa_l') {
                 ctx.fillRect(2, 2, rawW - 4, rawL * 0.25);
                 ctx.fillRect(rawW * 0.65, rawL * 0.25, rawW * 0.32, rawL * 0.7);
             } else if (item.itemType === 'car') {
-                // Windshield & roof
                 ctx.fillRect(rawW * 0.12, rawL * 0.22, rawW * 0.76, rawL * 0.55);
             } else if (item.itemType === 'plant') {
                 ctx.beginPath();
@@ -992,16 +1149,16 @@
                     ctx.lineWidth = 1;
                     ctx.strokeRect(p.x, p.y, w, h);
 
-                    if (slab.w >= 2 && slab.h >= 2) {
+                    if (slab.w >= 2 && slab.h >= 2 && w >= 24) {
                         ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-                        ctx.font = '600 10px Inter, sans-serif';
+                        ctx.font = '600 9.5px Inter, sans-serif';
                         ctx.textAlign = 'center';
                         const centerX = p.x + w / 2;
                         const centerY = p.y + h / 2;
                         if (slab.name) {
                             ctx.fillText(slab.name, centerX, centerY - 3);
-                            ctx.font = '500 9px Inter, sans-serif';
-                            ctx.fillText(formatDimensions(slab.w, slab.h), centerX, centerY + 9);
+                            ctx.font = '500 8.5px Inter, sans-serif';
+                            ctx.fillText(formatDimensions(slab.w, slab.h), centerX, centerY + 8);
                         } else {
                             ctx.fillText(formatDimensions(slab.w, slab.h), centerX, centerY + 3);
                         }
@@ -1033,7 +1190,7 @@
                         const sp = gridToScreen(pt.x, pt.y);
                         ctx.fillStyle = '#ffffff';
                         ctx.beginPath();
-                        ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2);
+                        ctx.arc(sp.x, sp.y, 2.8, 0, Math.PI * 2);
                         ctx.fill();
                     }
 
@@ -1042,12 +1199,12 @@
                     const areaVal = computePolygonArea(reg.points);
                     const areaText = formatArea(areaVal);
 
-                    ctx.font = 'bold 11px Inter, sans-serif';
+                    ctx.font = 'bold 10px Inter, sans-serif';
                     const nameW = ctx.measureText(reg.name).width;
-                    ctx.font = '500 9.5px Inter, sans-serif';
+                    ctx.font = '500 9px Inter, sans-serif';
                     const areaW = ctx.measureText(areaText).width;
-                    const pillW = Math.max(nameW, areaW) + 14;
-                    const pillH = 28;
+                    const pillW = Math.max(nameW, areaW) + 12;
+                    const pillH = 26;
 
                     ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
                     ctx.strokeStyle = reg.color;
@@ -1058,13 +1215,13 @@
                     ctx.stroke();
 
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 10.5px Inter, sans-serif';
+                    ctx.font = 'bold 10px Inter, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText(reg.name, cp.x, cp.y - 2);
 
                     ctx.fillStyle = '#93c5fd';
-                    ctx.font = '500 9px Inter, sans-serif';
-                    ctx.fillText(areaText, cp.x, cp.y + 9.5);
+                    ctx.font = '500 8.5px Inter, sans-serif';
+                    ctx.fillText(areaText, cp.x, cp.y + 9);
                 }
             }
 
@@ -1086,7 +1243,7 @@
                 const p2 = gridToScreen(w.x2, w.y2);
 
                 ctx.strokeStyle = isGhost ? '#94a3b8' : '#f8fafc';
-                ctx.lineWidth = isGhost ? 4 : 7;
+                ctx.lineWidth = isGhost ? 3.5 : Math.max(4, Math.min(7, cellPixelSize * 0.45));
                 ctx.lineCap = 'square';
                 if (isGhost) ctx.setLineDash([4, 4]);
                 else ctx.setLineDash([]);
@@ -1099,14 +1256,14 @@
 
                 if (!isGhost) {
                     ctx.strokeStyle = '#334155';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1.5;
                     ctx.beginPath();
                     ctx.moveTo(p1.x, p1.y);
                     ctx.lineTo(p2.x, p2.y);
                     ctx.stroke();
                 }
 
-                // 4. Doors (Single, Double, Sliding, Arch) & Windows along the wall
+                // 4. Doors & Windows along the wall
                 if (!isGhost && w.openings) {
                     const dx = p2.x - p1.x;
                     const dy = p2.y - p1.y;
@@ -1131,7 +1288,6 @@
                             ctx.lineWidth = 1.5;
 
                             if (dStyle === 'double') {
-                                // Double French Door Swing Arcs
                                 ctx.beginPath();
                                 ctx.moveTo(-halfSpan, 0);
                                 ctx.lineTo(-halfSpan, halfSpan);
@@ -1141,7 +1297,6 @@
                                 ctx.arc(halfSpan, 0, halfSpan, Math.PI / 2, Math.PI, false);
                                 ctx.stroke();
                             } else if (dStyle === 'sliding') {
-                                // Sliding Glass Panels
                                 ctx.strokeStyle = '#38bdf8';
                                 ctx.lineWidth = 2;
                                 ctx.beginPath();
@@ -1151,12 +1306,10 @@
                                 ctx.lineTo(halfSpan, 2);
                                 ctx.stroke();
                             } else if (dStyle === 'arch') {
-                                // Open Archway dashed pass-through
                                 ctx.setLineDash([3, 3]);
                                 ctx.strokeRect(-halfSpan, -4, halfSpan * 2, 8);
                                 ctx.setLineDash([]);
                             } else {
-                                // Standard Single Swing Door
                                 ctx.beginPath();
                                 ctx.moveTo(-halfSpan, 0);
                                 ctx.lineTo(-halfSpan, halfSpan * 1.6);
@@ -1180,6 +1333,7 @@
 
         function draw2D() {
             const rect = container2d.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
             ctx.clearRect(0, 0, rect.width, rect.height);
 
             // Blueprint background
@@ -1196,7 +1350,7 @@
             for (let i = 0; i <= GRID_W; i++) {
                 const isMajor = i % 5 === 0;
                 ctx.strokeStyle = isMajor ? '#334155' : '#1e293b';
-                ctx.lineWidth = isMajor ? 1.2 : 0.7;
+                ctx.lineWidth = isMajor ? 1.1 : 0.6;
 
                 const vx = gridOriginX + i * cellPixelSize;
                 ctx.beginPath();
@@ -1209,7 +1363,7 @@
             for (let j = 0; j <= GRID_D; j++) {
                 const isMajor = j % 5 === 0;
                 ctx.strokeStyle = isMajor ? '#334155' : '#1e293b';
-                ctx.lineWidth = isMajor ? 1.2 : 0.7;
+                ctx.lineWidth = isMajor ? 1.1 : 0.6;
 
                 const hy = gridOriginY + j * cellPixelSize;
                 ctx.beginPath();
@@ -1224,12 +1378,12 @@
             ctx.strokeRect(gridOriginX, gridOriginY, totalGridW, totalGridD);
 
             ctx.fillStyle = '#34d399';
-            ctx.font = '600 11px Inter, sans-serif';
+            ctx.font = '600 10px Inter, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`Front: ${formatLength(GRID_W)}`, gridOriginX + totalGridW / 2, gridOriginY + totalGridD + 15);
+            ctx.fillText(`Front: ${formatLength(GRID_W)}`, gridOriginX + totalGridW / 2, gridOriginY + totalGridD + 13);
 
             ctx.save();
-            ctx.translate(gridOriginX - 10, gridOriginY + totalGridD / 2);
+            ctx.translate(gridOriginX - 7, gridOriginY + totalGridD / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.fillText(`Depth: ${formatLength(GRID_D)}`, 0, 0);
             ctx.restore();
@@ -1274,7 +1428,7 @@
 
                     ctx.fillStyle = isStart ? '#10b981' : '#60a5fa';
                     ctx.beginPath();
-                    ctx.arc(sp.x, sp.y, isHoverStart ? 8 : (isStart ? 6 : 4.5), 0, Math.PI * 2);
+                    ctx.arc(sp.x, sp.y, isHoverStart ? 9 : (isStart ? 7 : 5), 0, Math.PI * 2);
                     ctx.fill();
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 1.8;
@@ -1284,7 +1438,7 @@
                         ctx.fillStyle = '#fde047';
                         ctx.font = 'bold 11px Inter, sans-serif';
                         ctx.textAlign = 'center';
-                        ctx.fillText('Click to Close & Name Region', sp.x, sp.y - 12);
+                        ctx.fillText('Tap to Close & Name', sp.x, sp.y - 12);
                     }
                 });
 
@@ -1377,12 +1531,13 @@
         }
 
         /**************************************************************
-         * 2B. 2D CANVAS MOUSE, DOUBLE-CLICK & KEYBOARD EVENTS
+         * 2B. 2D CANVAS MOUSE, TOUCH & KEYBOARD EVENTS
          **************************************************************/
         function getPointerPos(evt) {
             const rect = canvas2d.getBoundingClientRect();
-            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
-            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+            const touch = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]);
+            const clientX = touch ? touch.clientX : evt.clientX;
+            const clientY = touch ? touch.clientY : evt.clientY;
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
@@ -1392,23 +1547,26 @@
             if (currentTool === 'region' && currentPolygonPts.length > 0) {
                 bar.classList.remove('hidden');
                 bar.classList.add('flex');
-                countLabel.textContent = `${currentPolygonPts.length} pt${currentPolygonPts.length > 1 ? 's' : ''} selected`;
+                countLabel.textContent = `${currentPolygonPts.length} pt${currentPolygonPts.length > 1 ? 's' : ''}`;
             } else {
                 bar.classList.add('hidden');
                 bar.classList.remove('flex');
             }
+            requestAnimationFrame(() => resize2DCanvas());
         }
 
-        canvas2d.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            const pos = getPointerPos(e);
+        function handlePointerDown(pos) {
             const snap = screenToGridSnap(pos.x, pos.y);
             const flt = screenToGridFloat(pos.x, pos.y);
+            currentMouseGrid = { ...snap };
+
+            document.getElementById('cursor-coords').textContent =
+                `X: ${formatLength(snap.x)}, Y: ${formatLength(snap.y)}`;
 
             if (currentTool === 'region') {
                 if (currentPolygonPts.length >= 3) {
                     const firstPt = currentPolygonPts[0];
-                    if (snap.x === firstPt.x && snap.y === firstPt.y) {
+                    if (Math.hypot(snap.x - firstPt.x, snap.y - firstPt.y) <= 1.1) {
                         openRegionModal();
                         return;
                     }
@@ -1426,8 +1584,9 @@
                 isDragging2D = true;
                 dragStartGrid = { ...snap };
                 currentMouseGrid = { ...snap };
+                draw2D();
             } else if (currentTool === 'door' || currentTool === 'window') {
-                const hit = findClosestWall(currentFloor, flt.x, flt.y, 1.2);
+                const hit = findClosestWall(currentFloor, flt.x, flt.y, 1.5);
                 if (hit && hit.length >= 2.5) {
                     hit.wall.openings.push({
                         type: currentTool,
@@ -1465,46 +1624,9 @@
                 draw2D();
                 rebuild3D();
             }
-        });
+        }
 
-        canvas2d.addEventListener('dblclick', () => {
-            if (currentTool === 'region' && currentPolygonPts.length >= 3) {
-                openRegionModal();
-            }
-        });
-
-        window.addEventListener('keydown', (e) => {
-            const modalOpen = !document.getElementById('region-modal').classList.contains('hidden');
-            if (modalOpen) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    confirmSaveRegion();
-                } else if (e.key === 'Escape') {
-                    closeRegionModal();
-                }
-                return;
-            }
-
-            if (e.key === 'r' || e.key === 'R') {
-                if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-                rotatePlacementDir();
-                return;
-            }
-
-            if (currentTool === 'region' && currentPolygonPts.length > 0) {
-                if (e.key === 'Enter' && currentPolygonPts.length >= 3) {
-                    e.preventDefault();
-                    openRegionModal();
-                } else if (e.key === 'Backspace') {
-                    undoLastPolygonPoint();
-                } else if (e.key === 'Escape') {
-                    cancelPolygonDraft();
-                }
-            }
-        });
-
-        canvas2d.addEventListener('mousemove', (e) => {
-            const pos = getPointerPos(e);
+        function handlePointerMove(pos) {
             currentMouseRaw = pos;
             currentMouseGrid = screenToGridSnap(pos.x, pos.y);
             const flt = screenToGridFloat(pos.x, pos.y);
@@ -1513,15 +1635,15 @@
                 `X: ${formatLength(currentMouseGrid.x)}, Y: ${formatLength(currentMouseGrid.y)}`;
 
             if (currentTool === 'door' || currentTool === 'window') {
-                hoveredWallInfo = findClosestWall(currentFloor, flt.x, flt.y, 1.2);
+                hoveredWallInfo = findClosestWall(currentFloor, flt.x, flt.y, 1.5);
             } else {
                 hoveredWallInfo = null;
             }
 
             draw2D();
-        });
+        }
 
-        window.addEventListener('mouseup', () => {
+        function handlePointerUp() {
             if (!isDragging2D) return;
             isDragging2D = false;
 
@@ -1560,15 +1682,84 @@
             }
 
             draw2D();
+        }
+
+        // Desktop Mouse Events
+        canvas2d.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            handlePointerDown(getPointerPos(e));
+        });
+
+        canvas2d.addEventListener('mousemove', (e) => {
+            handlePointerMove(getPointerPos(e));
+        });
+
+        window.addEventListener('mouseup', () => {
+            handlePointerUp();
+        });
+
+        // Mobile & Tablet Touch Events
+        canvas2d.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                handlePointerDown(getPointerPos(e));
+            }
+        }, { passive: false });
+
+        canvas2d.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                handlePointerMove(getPointerPos(e));
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            handlePointerUp();
+        });
+
+        canvas2d.addEventListener('dblclick', () => {
+            if (currentTool === 'region' && currentPolygonPts.length >= 3) {
+                openRegionModal();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const modalOpen = !document.getElementById('region-modal').classList.contains('hidden');
+            if (modalOpen) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmSaveRegion();
+                } else if (e.key === 'Escape') {
+                    closeRegionModal();
+                }
+                return;
+            }
+
+            if (e.key === 'r' || e.key === 'R') {
+                if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+                rotatePlacementDir();
+                return;
+            }
+
+            if (currentTool === 'region' && currentPolygonPts.length > 0) {
+                if (e.key === 'Enter' && currentPolygonPts.length >= 3) {
+                    e.preventDefault();
+                    openRegionModal();
+                } else if (e.key === 'Backspace') {
+                    undoLastPolygonPoint();
+                } else if (e.key === 'Escape') {
+                    cancelPolygonDraft();
+                }
+            }
         });
 
         function eraseAtPoint(floorIdx, gx, gy) {
             const f = floorsData[floorIdx];
 
             // 1. Check wall or wall opening first
-            const wallHit = findClosestWall(floorIdx, gx, gy, 1.2);
+            const wallHit = findClosestWall(floorIdx, gx, gy, 1.4);
             if (wallHit) {
-                const opIdx = wallHit.wall.openings.findIndex(op => Math.abs(op.offset - wallHit.offset) < 0.14);
+                const opIdx = wallHit.wall.openings.findIndex(op => Math.abs(op.offset - wallHit.offset) < 0.16);
                 if (opIdx !== -1) {
                     wallHit.wall.openings.splice(opIdx, 1);
                     return;
@@ -1728,11 +1919,13 @@
             scene.background = new THREE.Color(0x0b1120);
 
             const rect = container3d.getBoundingClientRect();
-            camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.5, 1000);
+            const w = rect.width || window.innerWidth;
+            const h = rect.height || window.innerHeight * 0.7;
+            camera = new THREE.PerspectiveCamera(45, w / h, 0.5, 1000);
             camera.position.set(45, 42, 52);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(rect.width, rect.height);
+            renderer.setSize(w, h);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1784,6 +1977,7 @@
         function resize3DCanvas() {
             if (!renderer || !camera) return;
             const rect = container3d.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
             camera.aspect = rect.width / rect.height;
             camera.updateProjectionMatrix();
             renderer.setSize(rect.width, rect.height);
@@ -1832,14 +2026,12 @@
             const poleMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.3, metalness: 0.6 });
 
             if (type === 'spiral') {
-                // Center column pole
                 const poleGeo = new THREE.CylinderGeometry(0.45, 0.45, wallHeight + 0.5, 16);
                 const poleMesh = new THREE.Mesh(poleGeo, poleMat);
                 poleMesh.position.set(0, wallHeight / 2, 0);
                 poleMesh.castShadow = true;
                 localGroup.add(poleMesh);
 
-                // Helical / Curl Steps around center pole
                 const numSteps = 16;
                 const radius = spec.w / 2 - 0.3;
                 for (let i = 0; i < numSteps; i++) {
@@ -1855,7 +2047,6 @@
                     stepMesh.castShadow = true;
                     holder.add(stepMesh);
 
-                    // Baluster handrail post
                     const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.4, 8);
                     const postMesh = new THREE.Mesh(postGeo, poleMat);
                     postMesh.position.set(radius + 0.1, 1.2, 0);
@@ -1864,7 +2055,6 @@
                     localGroup.add(holder);
                 }
             } else if (type === 'lshape') {
-                // L-Shaped Quarter-Turn Staircase (6x6)
                 const halfH = wallHeight / 2;
                 const steps1 = 6;
                 for (let i = 0; i < steps1; i++) {
@@ -1874,14 +2064,12 @@
                     sMesh.castShadow = true;
                     localGroup.add(sMesh);
                 }
-                // Corner Landing
                 const landGeo = new THREE.BoxGeometry(3.0, 0.4, 3.0);
                 const landMesh = new THREE.Mesh(landGeo, stairMat);
                 landMesh.position.set(-1.5, halfH, -1.5);
                 landMesh.castShadow = true;
                 localGroup.add(landMesh);
 
-                // Second Flight turning 90 deg right
                 for (let i = 0; i < steps1; i++) {
                     const sGeo = new THREE.BoxGeometry(0.5, halfH / steps1, 2.8);
                     const sMesh = new THREE.Mesh(sGeo, stairMat);
@@ -1890,7 +2078,6 @@
                     localGroup.add(sMesh);
                 }
             } else if (type === 'uturn') {
-                // U-Turn Dog-Legged Staircase (6x8)
                 const halfH = wallHeight / 2;
                 const steps = 7;
                 const flightLen = 5.4;
@@ -1904,14 +2091,12 @@
                     localGroup.add(sMesh);
                 }
 
-                // Mid-Landing
                 const landGeo = new THREE.BoxGeometry(5.8, 0.4, 2.4);
                 const landMesh = new THREE.Mesh(landGeo, stairMat);
                 landMesh.position.set(0, halfH, -2.8);
                 landMesh.castShadow = true;
                 localGroup.add(landMesh);
 
-                // Return Flight
                 for (let i = 0; i < steps; i++) {
                     const sGeo = new THREE.BoxGeometry(2.7, halfH / steps, stepD);
                     const sMesh = new THREE.Mesh(sGeo, stairMat);
@@ -1920,7 +2105,6 @@
                     localGroup.add(sMesh);
                 }
             } else {
-                // Straight Flight (3x9)
                 const numSteps = 12;
                 const stepDepth = spec.l / numSteps;
                 const stepHeight = wallHeight / numSteps;
@@ -1961,7 +2145,6 @@
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
 
             if (item.itemType === 'bed_king' || item.itemType === 'bed_single') {
-                // Bed Frame + Mattress + Headboard + Pillows
                 const base = new THREE.Mesh(new THREE.BoxGeometry(spec.w, 1.2, spec.l), mainMat);
                 base.position.set(0, 0.6, 0);
                 base.castShadow = true;
@@ -2194,7 +2377,7 @@
                     }
                 }
 
-                // 2. Build Stairs (Straight, Spiral/Curl, L-Shaped, U-Turn)
+                // 2. Build Stairs
                 for (let st of fData.stairs) {
                     floorGroup.add(createStair3DGroup(st, wallHeight, stairMat));
                 }
@@ -2371,14 +2554,14 @@
             const furnSpec = FURNITURE_CATALOG[currentFurnitureType] || FURNITURE_CATALOG.bed_king;
             const hints = {
                 room: 'Drag on the grid to create a complete rectangular room with floor & 4 walls.',
-                region: 'Click grid points to trace any custom shape (L-shape, angled, polygon). Click the first point or press Enter to name & highlight it.',
+                region: 'Tap grid points to trace any custom shape (L-shape, angled, polygon). Tap the first point to name & highlight it.',
                 wall: 'Drag between grid points to build an interior or exterior wall (including diagonal walls).',
                 slab: 'Drag to place a flat floor slab, patio, or balcony without walls.',
-                door: `Click on any wall to insert a ${formatLength(currentDoorWidth)} ${currentDoorType} door.`,
-                window: 'Click directly on any existing wall segment to insert a 4 ft glass window.',
-                stairs: `Click on the grid to place a ${stSpec.label} (${formatDimensions(stSpec.w, stSpec.l)}). Press R to rotate.`,
-                furniture: `Click on the grid to place ${furnSpec.label} (${formatDimensions(furnSpec.w, furnSpec.l)}). Press R to rotate.`,
-                erase: 'Click on any wall, door, window, furniture item, staircase, custom region, or room slab to remove it.'
+                door: `Tap on any wall to insert a ${formatLength(currentDoorWidth)} ${currentDoorType} door.`,
+                window: 'Tap directly on any existing wall segment to insert a 4 ft glass window.',
+                stairs: `Tap on the grid to place a ${stSpec.label} (${formatDimensions(stSpec.w, stSpec.l)}).`,
+                furniture: `Tap on the grid to place ${furnSpec.label} (${formatDimensions(furnSpec.w, furnSpec.l)}).`,
+                erase: 'Tap on any wall, door, window, furniture item, staircase, custom region, or room slab to remove it.'
             };
             return hints[tool] || '';
         }
@@ -2393,6 +2576,31 @@
             const activeBtn = document.getElementById(`tool-${tool}`);
             if (activeBtn) activeBtn.classList.add('active');
 
+            const toolLabels = {
+                room: 'Room Box',
+                region: 'Mark Region',
+                wall: 'Single Wall',
+                slab: 'Slab',
+                door: 'Door',
+                window: 'Window',
+                stairs: 'Staircase',
+                furniture: 'Furniture',
+                erase: 'Eraser'
+            };
+            const pillName = document.getElementById('mobile-tool-name');
+            if (pillName) pillName.textContent = toolLabels[tool] || 'Tool';
+
+            const quickRot = document.getElementById('mobile-quick-rotate');
+            if (quickRot) {
+                if (tool === 'stairs' || tool === 'furniture') {
+                    quickRot.classList.remove('hidden');
+                    quickRot.classList.add('flex');
+                } else {
+                    quickRot.classList.add('hidden');
+                    quickRot.classList.remove('flex');
+                }
+            }
+
             document.getElementById('tool-hint').textContent = getToolHint(tool);
             draw2D();
         }
@@ -2406,7 +2614,7 @@
                 if (i === floorIdx) tab.classList.add('active');
                 else tab.classList.remove('active');
             }
-            document.getElementById('active-2d-label').textContent = `2D Blueprint — ${floorsData[floorIdx].name}`;
+            document.getElementById('active-2d-label').textContent = `2D — ${floorsData[floorIdx].name}`;
             draw2D();
             rebuild3D();
         }
@@ -2427,6 +2635,8 @@
         function rotatePlacementDir() {
             stairDirection = (stairDirection + 1) % 4;
             document.getElementById('stair-dir-label').textContent = `Dir: ${STAIR_DIRS[stairDirection]}`;
+            const badge = document.getElementById('mobile-dir-badge');
+            if (badge) badge.textContent = ['N', 'E', 'S', 'W'][stairDirection];
             if (currentTool !== 'stairs' && currentTool !== 'furniture') {
                 setTool('stairs');
             } else {
@@ -2436,7 +2646,10 @@
 
         function updateWallHeight(val) {
             wallHeight = parseFloat(val);
-            document.getElementById('wall-height-val').textContent = formatHeight(wallHeight);
+            const formatted = formatHeight(wallHeight);
+            document.getElementById('wall-height-val').textContent = formatted;
+            const mobVal = document.getElementById('wall-height-val-mob');
+            if (mobVal) mobVal.textContent = formatted;
             rebuild3D();
         }
 
@@ -2515,20 +2728,33 @@
 
         function updateStatsUI() {
             const cur = floorsData[currentFloor];
+            const furnCount = cur.furniture ? cur.furniture.length : 0;
             document.getElementById('stat-walls').textContent = cur.walls.length;
             document.getElementById('stat-regions').textContent = cur.regions.length;
-            document.getElementById('stat-furniture').textContent = cur.furniture ? cur.furniture.length : 0;
+            document.getElementById('stat-furniture').textContent = furnCount;
+
+            const mobWalls = document.getElementById('stat-walls-mob');
+            const mobRegions = document.getElementById('stat-regions-mob');
+            const mobFurn = document.getElementById('stat-furniture-mob');
+            if (mobWalls) mobWalls.textContent = cur.walls.length;
+            if (mobRegions) mobRegions.textContent = cur.regions.length;
+            if (mobFurn) mobFurn.textContent = furnCount;
 
             let openingsCount = 0;
             cur.walls.forEach(w => openingsCount += (w.openings ? w.openings.length : 0));
             document.getElementById('stat-openings').textContent = openingsCount;
+            const mobOps = document.getElementById('stat-openings-mob');
+            if (mobOps) mobOps.textContent = openingsCount;
 
             let totalAreaGrid = 0;
             floorsData.forEach(f => {
                 f.slabs.forEach(s => totalAreaGrid += s.w * s.h);
                 f.regions.forEach(r => totalAreaGrid += computePolygonArea(r.points));
             });
-            document.getElementById('total-area-stat').textContent = formatArea(totalAreaGrid);
+            const areaStr = formatArea(totalAreaGrid);
+            document.getElementById('total-area-stat').textContent = areaStr;
+            const mobArea = document.getElementById('total-area-stat-mob');
+            if (mobArea) mobArea.textContent = areaStr;
         }
 
         // Pre-populate a 3-Story Contemporary Villa with Curl/Spiral Stairs, Double Doors & Furniture
@@ -2539,7 +2765,6 @@
             floorsData[0].slabs.push({ x: 4, y: 14, w: 22, h: 16, color: '#e2e8f0' });
             floorsData[0].slabs.push({ x: 4, y: 6, w: 12, h: 8, color: '#94a3b8' });
 
-            // Sample Custom L-Shaped Wrap-Around Verandah & Lawn Region on Ground Floor
             floorsData[0].regions.push({
                 name: 'L-Wrap Verandah',
                 points: [
@@ -2554,7 +2779,6 @@
                 has3DSlab: true
             });
 
-            // Sample Angled Bay Study Alcove on Ground Floor
             floorsData[0].regions.push({
                 name: 'Bay Sit-Out',
                 points: [
@@ -2567,7 +2791,6 @@
                 has3DSlab: true
             });
 
-            // Ground Perimeter & Interior Walls
             addWallSegment(0, 4, 14, 4, 30);
             addWallSegment(0, 4, 30, 26, 30);
             addWallSegment(0, 26, 30, 26, 14);
@@ -2577,7 +2800,6 @@
             addWallSegment(0, 16, 6, 16, 14);
             addWallSegment(0, 16, 14, 16, 24);
 
-            // Add Double Main Entry Door, Sliding Patio Door & Windows on Ground Floor
             floorsData[0].walls[1].openings.push(
                 { type: 'door', doorType: 'double', width: 5.0, offset: 0.32 },
                 { type: 'window', width: 4.0, offset: 0.75 }
@@ -2586,10 +2808,8 @@
             floorsData[0].walls[5].openings.push({ type: 'window', width: 4.0, offset: 0.5 });
             floorsData[0].walls[7].openings.push({ type: 'door', doorType: 'arch', width: 4.0, offset: 0.7 });
 
-            // Ground Curl / Spiral Staircase (6x6 ft)
             floorsData[0].stairs.push({ x: 19, y: 15, dir: 0, stairType: 'spiral' });
 
-            // Ground Floor Furniture (L-Lounge Sofa, Dining Table, Kitchen Island, Planter)
             floorsData[0].furniture.push(
                 { x: 5, y: 22, dir: 0, itemType: 'sofa_l' },
                 { x: 6, y: 15, dir: 0, itemType: 'dining_6' },
@@ -2623,10 +2843,8 @@
             floorsData[1].walls[2].openings.push({ type: 'door', doorType: 'sliding', width: 6.0, offset: 0.75 }, { type: 'window', width: 4.0, offset: 0.25 });
             floorsData[1].walls[4].openings.push({ type: 'door', doorType: 'single', width: 3.0, offset: 0.5 });
 
-            // 1st Floor U-Turn Staircase
             floorsData[1].stairs.push({ x: 19, y: 15, dir: 0, stairType: 'uturn' });
 
-            // 1st Floor Furniture (King Bed, Wardrobe, Study Desk)
             floorsData[1].furniture.push(
                 { x: 5, y: 15, dir: 0, itemType: 'bed_king' },
                 { x: 5, y: 27, dir: 2, itemType: 'wardrobe' },
@@ -2657,12 +2875,14 @@
         // Initialize everything on window load
         window.onload = function () {
             lucide.createIcons();
+            setMobileTab('2d');
             resize2DCanvas();
             init3D();
             changeUnit('ft');
             loadPresetVilla();
 
             window.addEventListener('resize', () => {
+                setMobileTab(activeMobileTab);
                 resize2DCanvas();
                 resize3DCanvas();
             });
